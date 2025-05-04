@@ -24,7 +24,7 @@ def display_planes(volume: np.ndarray, pixel_len_mm: list):
     coronal_idx = height // 2
     sagittal_idx = width // 2
 
-    plt.figure(figsize=(15, 5))
+    plt.figure(figsize=(10, 6))
 
     plt.subplot(131)
     plt.imshow(volume[axial_idx,:,:], cmap='bone', aspect=pixel_len_mm[1]/pixel_len_mm[2])
