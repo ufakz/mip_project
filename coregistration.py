@@ -1,10 +1,9 @@
 import os
-import pydicom
 import numpy as np
-import argparse
-import yaml
 from utils import load_config, load_dicom_series, parse_arguments, alpha_fusion, visualize_MIP_per_plane
 import matplotlib.pyplot as plt
+from scipy.ndimage import rotate, shift
+from scipy.optimize import least_squares
 
 VISUALIZE = False
 
@@ -46,6 +45,54 @@ def display_planes(volume: np.ndarray, pixel_len_mm: list):
 
     plt.tight_layout()
     plt.show()
+    
+    
+def rigid_transformation(volume: np.ndarray, parameters: tuple[float, ...], angle_in_rads: int = 360) -> np.ndarray:
+    """ Apply to `volume` a translation followed by an axial rotation defined by `parameters`. """
+    t1, t2, t3, v1, v2, v3 = parameters
+    # Scale to original values
+    t1, t2, t3 = np.array([t1, t2, t3])
+    
+    # apply transformation
+    trans_volume = shift(volume,(t1, t2, t3))
+    trans_volume = rotate(trans_volume, angle_in_rads * v3, (0, 1))
+    trans_volume = rotate(trans_volume, angle_in_rads * v1, (1, 2))
+    trans_volume = rotate(trans_volume, angle_in_rads * v2, (2, 0))
+    
+    return trans_volume
+
+#Note: Using SSD for now. Will change to MI later
+def vector_of_residuals(ref_points: np.ndarray, inp_points: np.ndarray) -> np.ndarray:
+    """ Given arrays of 3D points with shape (point_idx, 3), compute vector of residuals as their respective distance """
+    # Your code here:
+    #   ...
+    # Ensure the volumes have the same shape
+    
+    diff = ref_points - inp_points
+        
+    return diff.flatten()
+
+def coregister_landmarks(ref_landmarks: np.ndarray, inp_landmarks: np.ndarray):
+    """ Coregister two sets of landmarks using a rigid transformation. """
+    # Your code here:
+    # ....
+    initial_parameters = [
+        0.0, 0.0, 0.0,  
+        0.0, 0.0, 0.0,   
+    ]
+
+    def function_to_minimize(parameters):
+        """ Transform input landmarks, then compare with reference landmarks."""
+        inp_landmarks_transf = rigid_transformation(inp_landmarks, parameters)
+        return vector_of_residuals(ref_landmarks, inp_landmarks_transf)
+
+    # Apply least squares optimization
+    result = least_squares(
+        function_to_minimize,
+        x0=initial_parameters,
+        verbose=2)
+    
+    return result
 
 def main():
     
@@ -84,7 +131,7 @@ def main():
         
         print(f"Ref volume shape: {ref_volume.shape}")
         print(f"Input volume shape: {input_volume.shape}")
-        
+    
         if visualize_flag:
             visualize_MIP_per_plane(ref_volume, ref_pixel_len_mm)
             visualize_MIP_per_plane(input_volume, input_pixel_len_mm)
@@ -94,19 +141,26 @@ def main():
         input_volume = min_max_normalization(input_volume)
 
         display_planes(ref_volume, ref_pixel_len_mm)
+        display_planes(input_volume, input_pixel_len_mm)
         
-        # scan_3d = rigid_transformation(scan_3d, parameters, img_phantom)
-        # scan_3d_pspace = img_phantom
-        # img_atlas_pspace = img_atlas
+        # Step 3: Apply rigid transformation to the input volume
+        #sample_parameters = (10, 20, -5, 0.25, 0.7, 0.15) 
+        #transformed_volume = rigid_transformation(input_volume, sample_parameters)
         
+        #print(f"Transformed volume shape: {transformed_volume.shape}")
+        
+        #display_planes(transformed_volume, input_pixel_len_mm)
+        
+        # Step 4: Apply the optimization algorithm
+        # result = coregister_landmarks(ref_volume, input_volume)
+        # solution_found = result.x
+        # print(f"Solution found: {solution_found}")
             
             
     except (FileNotFoundError, ValueError, IOError) as e:
         print(f"An error occurred: {e}")
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
-    # Object names and color configuration
-    
     
 if __name__ == "__main__":
     main()
