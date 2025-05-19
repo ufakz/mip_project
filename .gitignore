@@ -68,3 +68,7 @@ coverage.xml
 # Logs and databases
 *.log
 *.sqlite
+
+# Folders
+data/
+results/

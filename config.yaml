@@ -2,4 +2,4 @@ dataset_dir: 'data/10_AP_Ax5.00mm'
 input_dir: 'data/31_EQP_Ax5.00mm'
 segment_dir: 'data/masks'
 output_dir: 'results/animation_output'
-visualize: false
+visualize: true
