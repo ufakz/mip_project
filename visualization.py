@@ -115,7 +115,7 @@ def main():
     try:
         # 1. Load the DICOM series
         
-        ct_slices, pixel_len_mm = load_dicom_series(dataset_dir)
+        ct_slices, pixel_len_mm = load_dicom_series(dataset_dir, key_info=True)
         # Convert to float to avoid overflow
         img_3d_np = np.array([f.pixel_array.astype(float) for f in ct_slices])
         
@@ -138,6 +138,18 @@ def main():
         img_3d_np_adjusted, noise_mask = apply_window_level(img_3d_np, window=400, level=40)
         
         img_3d_np_mip, _ = apply_window_level(img_3d_np, window=800, level=400)
+        
+        # Find the most frequent value (likely background or air)
+        vals, counts = np.unique(img_3d_np_adjusted.flatten(), return_counts=True)
+        most_frequent_value = vals[np.argmax(counts)]
+        second_most_frequent_value = vals[np.argsort(counts)[-2]]
+        
+        # Create a new array excluding the most frequent value for histogram plotting
+        img_3d_np_adjusted_no_outliers = img_3d_np_adjusted[img_3d_np_adjusted != most_frequent_value]
+        img_3d_np_adjusted_no_outliers = img_3d_np_adjusted_no_outliers[img_3d_np_adjusted_no_outliers != second_most_frequent_value]
+        if visualize_flag:
+            print("Plotting histogram of pixel values after contrast enhancement...")
+            plot_ct_histogram(img_3d_np_adjusted_no_outliers)
         
         #img_3d_np_adjusted = apply_intensity_windowing(img_3d_np, a=20, b=300)
         if visualize_flag:

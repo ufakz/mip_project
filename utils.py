@@ -322,46 +322,35 @@ def alpha_fusion(
 ) -> np.ndarray:
     """Visualize both image and mask in the same plot."""
 
-    # TECHNIQUE: USING RGB COLORING
+    # Convert grayscale image to RGB using 'bone' colormap
     cmap = matplotlib.colormaps["bone"]
     norm = matplotlib.colors.Normalize(vmin=np.amin(img), vmax=np.amax(img))
-    col_mask = np.zeros(list(mask.shape) + [3])
+    img_rgb_float = cmap(norm(img))[..., :3]  # Shape (H, W, 3), values 0.0-1.0
 
+    # Initialize fused_slice with the RGB image.
+    # We will only modify the parts covered by masks.
+    fused_slice_float = img_rgb_float.copy()
+
+    # Create a layer that will hold the specific color for each segmented pixel
+    object_color_layer = np.zeros_like(img_rgb_float)
     for k in range(n_objects):
-        col_mask[mask == (k + 1)] = object_colors[k]
+        # Boolean mask for the current object
+        current_object_pixels = (mask == (k + 1))
+        # Assign the object's color to these pixels in the object_color_layer
+        object_color_layer[current_object_pixels] = object_colors[k]
 
-    fused_slice = (1 - alpha) * cmap(norm(img))[..., :3] + alpha * col_mask
-    return (fused_slice * 255).astype("uint8")
+    # Boolean mask for all pixels that are part of any segmentation
+    any_segment_pixels = (mask > 0)
 
-    # # Convert grayscale image to RGB using 'bone' colormap
-    # cmap = matplotlib.colormaps["bone"]
-    # norm = matplotlib.colors.Normalize(vmin=np.amin(img), vmax=np.amax(img))
-    # img_rgb_float = cmap(norm(img))[..., :3]  # Shape (H, W, 3), values 0.0-1.0
+    # Apply alpha blending only to the pixels covered by any segment
+    if np.any(any_segment_pixels): # Proceed only if there are segmented pixels
+        fused_slice_float[any_segment_pixels] = (
+            (1 - alpha) * img_rgb_float[any_segment_pixels] +
+            alpha * object_color_layer[any_segment_pixels]
+        )
 
-    # # Initialize fused_slice with the RGB image.
-    # # We will only modify the parts covered by masks.
-    # fused_slice_float = img_rgb_float.copy()
-
-    # # Create a layer that will hold the specific color for each segmented pixel
-    # object_color_layer = np.zeros_like(img_rgb_float)
-    # for k in range(n_objects):
-    #     # Boolean mask for the current object
-    #     current_object_pixels = (mask == (k + 1))
-    #     # Assign the object's color to these pixels in the object_color_layer
-    #     object_color_layer[current_object_pixels] = object_colors[k]
-
-    # # Boolean mask for all pixels that are part of any segmentation
-    # any_segment_pixels = (mask > 0)
-
-    # # Apply alpha blending only to the pixels covered by any segment
-    # if np.any(any_segment_pixels): # Proceed only if there are segmented pixels
-    #     fused_slice_float[any_segment_pixels] = (
-    #         (1 - alpha) * img_rgb_float[any_segment_pixels] +
-    #         alpha * object_color_layer[any_segment_pixels]
-    #     )
-
-    # # Convert to uint8 (0-255 range)
-    # return (fused_slice_float * 255).astype("uint8")
+    # Convert to uint8 (0-255 range)
+    return (fused_slice_float * 255).astype("uint8")
 
 
 def MIP_per_plane(img_dcm: np.ndarray, axis: int = 2) -> np.ndarray:
@@ -399,49 +388,6 @@ def visualize_MIP_per_plane(img_fused_vol: np.ndarray, pixel_len_mm: List):
         )
         plt.title(f"MIP for {labels[i]}")
         plt.show()
-    # for i in range(3):  # 0: Axial (project along D), 1: Coronal (project along H), 2: Sagittal (project along W)
-    #     projection_axis = i
-
-    #     # Get the indices of the maximum intensity values along the projection axis
-    #     max_intensity_indices = np.argmax(img_intensity_vol, axis=projection_axis)
-
-    #     mip_fused_rgb = None
-    #     if projection_axis == 0:  # Axial view, project along D (axis 0)
-    #         # Output MIP shape (H, W, 3)
-    #         # h_coords and w_coords for indexing into H and W dimensions
-    #         h_coords, w_coords = np.meshgrid(
-    #             np.arange(img_fused_vol.shape[1]), 
-    #             np.arange(img_fused_vol.shape[2]), 
-    #             indexing='ij'
-    #         )
-    #         # Use max_intensity_indices (values are D indices) to pick from img_fused_vol
-    #         mip_fused_rgb = img_fused_vol[max_intensity_indices, h_coords, w_coords, :]
-    #     elif projection_axis == 1:  # Coronal view, project along H (axis 1)
-    #         # Output MIP shape (D, W, 3)
-    #         d_coords, w_coords = np.meshgrid(
-    #             np.arange(img_fused_vol.shape[0]), 
-    #             np.arange(img_fused_vol.shape[2]), 
-    #             indexing='ij'
-    #         )
-    #         mip_fused_rgb = img_fused_vol[d_coords, max_intensity_indices, w_coords, :]
-    #     elif projection_axis == 2:  # Sagittal view, project along W (axis 2)
-    #         # Output MIP shape (D, H, 3)
-    #         d_coords, h_coords = np.meshgrid(
-    #             np.arange(img_fused_vol.shape[0]), 
-    #             np.arange(img_fused_vol.shape[1]), 
-    #             indexing='ij'
-    #         )
-    #         mip_fused_rgb = img_fused_vol[d_coords, h_coords, max_intensity_indices, :]
-        
-    #     aspect_ratio = pixel_len_mm[ar_indices[i][0]] / pixel_len_mm[ar_indices[i][1]]
-        
-    #     plt.figure()
-    #     plt.imshow(
-    #         mip_fused_rgb,
-    #         aspect=aspect_ratio,
-    #     )
-    #     plt.title(f"MIP for {labels[i]} (Color from Max Intensity Slice)")
-    #     plt.show()
 
 def rotate_on_axial_plane(img_dcm: np.ndarray, angle_in_degrees: float) -> np.ndarray:
     """Rotate the image on the axial plane."""
@@ -494,6 +440,7 @@ def create_animation(
     projections = []
     #   Creating legend for figures
     patches = []
+    object_colors = [(0, 1, 0), (1, 1, 0)]  # Red for Liver, Green for Tumor
     for k in range(len(labels)):
         patches.append(mpatches.Patch(color=object_colors[k], label=labels[k]))
 
