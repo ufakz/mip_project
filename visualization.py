@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 
 VISUALIZE = False 
 
-
 def load_segmentations(segment_dir):
     """Loads segmentation data from DICOM files in a directory."""
     seg_dcms = []

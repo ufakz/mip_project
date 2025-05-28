@@ -473,7 +473,7 @@ def main():
         # result = coregister_volumes(
         #     input_volume_normalized,
         #     ref_volume_normalized,
-        #     optimizer="LS",
+        #     optimizer="GD",
         #     initial_parameters=initial_parameters,
         # )
 
@@ -500,8 +500,11 @@ def main():
         # First eval
         # best_params = [0.24, -0.19, 0.25, 0.14, 0.02, -0.10] # From the output of the optimizer
         
-        # Second eval
-        best_params = [0.00, -0.23, 0.44, -0.03, 0.00, 0.04]
+        # Least Squares
+        # best_params = [0.00, -0.23, 0.44, -0.03, 0.00, 0.04]
+        
+        # Gradient Descent
+        best_params = [0.27, -0.18, 0.15, 0.16, -0.00, 0.10]
         
         best_transformed_input = rigid_transformation(
             input_volume_processed, best_params, ref_volume.shape
@@ -550,16 +553,16 @@ def main():
             print("Visualizing MIPs...")
             visualize_MIP_per_plane(final_fused_mip, ref_pixel_len_mm)
         
-        ##### Step 9: Create animation
-        create_animation(
-            final_fused_mip,
-            pixel_len_mm=ref_pixel_len_mm,
-            labels=objects,
-            object_colors=object_colors,
-            n=24,
-            save_dir="results/registration_animation",
-            show=visualize_flag,
-        )
+        # ##### Step 9: Create animation
+        # create_animation(
+        #     final_fused_mip,
+        #     pixel_len_mm=ref_pixel_len_mm,
+        #     labels=objects,
+        #     object_colors=object_colors,
+        #     n=24,
+        #     save_dir="results/registration_animation",
+        #     show=visualize_flag,
+        # )
         
 
     except (FileNotFoundError, ValueError, IOError) as e:

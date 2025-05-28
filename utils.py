@@ -107,8 +107,8 @@ def center_crop(vol: np.ndarray, dim):
 # -------Measurement Functions-------
 def estimate_noisy_pixels(img: np.ndarray):
     """Estimate the noisy pixels in the background of an image."""
-    noise_threshold = 300  # Medido en [T1]
-    noise_mask = (img < noise_threshold) * (img > 0)
+    noise_threshold = -150  # Medido en [T1]
+    noise_mask = (img < noise_threshold)
     return noise_mask
 
 def power_of_signal(signal_or_img: np.ndarray) -> float:
