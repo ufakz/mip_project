@@ -36,7 +36,7 @@ Command-line arguments can override the settings in `config.yaml`.
 
 1.  **Clone the repository (if applicable):**
     ```bash
-    git clone <repository-url>
+    git clone https://github.com/ufakz/mip_project
     cd mip_project
     ```
 2.  **Create a virtual environment (recommended):**
